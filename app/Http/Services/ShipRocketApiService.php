@@ -6,57 +6,52 @@ namespace App\Http\Services;
 
 use GuzzleHttp\Client;
 
-final class ShipRocketApiService
+final class ShippingApiService
 {
-    private string $apiTokenUrl;
-    private string $email;
-    private string $password;
+    private string $apiBaseUrl;
+    private string $publicKey;
+    private string $privateKey;
     private ?string $token = null;
     private Client $client;
 
     public function __construct()
     {
-         // Initialize the Guzzle client
-         $this->client = new Client([
-            'base_uri' => 'https://apiv2.shiprocket.in/v1/external/',
+        // Initialize the Guzzle client
+        $this->client = new Client([
+            'base_uri' => 'https://shipping-api.com/app/api/v1/',
             'headers' => [
                 'Content-Type' => 'application/json',
             ],
-        ]);
-        $this->email = config('shipRocket.email');
-        $this->password = config('shipRocket.password');
-        $this->apiTokenUrl = config('shipRocket.generate_token');
-        $this->generateToken();
+        ]);        
     }
 
-    private function generateToken()
+    private function login(): void
     {
-        $data = [
-            'email' => $this->email,
-            'password' => $this->password
-        ];
-
         try {
-            $response = $this->client->post($this->apiTokenUrl, [
-                'json' => $data
+            $response = $this->client->post('/login', [
+                'headers' => [
+                    'public-key' => "vpnusfluid@gmail.com",
+                    'private-key' =>"VPNUSFLUId@123",
+                ],
             ]);
-            
+
             $this->token = json_decode($response->getBody()->getContents(), true)['token'];
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            throw new \RuntimeException('Login failed: ' . $e->getMessage());
         }
     }
-    public function createOrder(array $orderData): array
+
+    public function checkPincodeServiceability(string $pickupPincode, string $deliveryPincode): array
     {
-        $url = 'https://apiv2.shiprocket.in/v1/external/orders/create/adhoc';
+        $this->ensureAuthenticated();
 
         try {
-            $response = $this->client->post($url, [
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer ' . $this->token,
+            $response = $this->client->post('/pincode-serviceability', [
+                'headers' => $this->getAuthHeaders(),
+                'json' => [
+                    'pickup_pincode' => $pickupPincode,
+                    'delivery_pincode' => $deliveryPincode,
                 ],
-                'json' => $orderData,
             ]);
 
             return json_decode($response->getBody()->getContents(), true);
@@ -67,32 +62,38 @@ final class ShipRocketApiService
             ];
         }
     }
-    public function calculateShippingCharge(string $pickupPincode, string $deliveryPincode, float $weight, bool $isCod = false): array
-    {
-        $url = 'https://apiv2.shiprocket.in/v1/external/courier/serviceability/';
 
-        $payload = [
-            'pickup_postcode' => $pickupPincode,
-            'delivery_postcode' => $deliveryPincode,
-            'cod' => $isCod,
-            'weight' => $weight,
+    public function calculateRate(array $rateData): array
+    {
+        $this->ensureAuthenticated();
+
+        try {
+            $response = $this->client->post('/rate-calculator', [
+                'headers' => $this->getAuthHeaders(),
+                'json' => $rateData,
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    private function ensureAuthenticated(): void
+    {
+        if (!$this->token) {
+            $this->login();
+        }
+    }
+
+    private function getAuthHeaders(): array
+    {
+        return [
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $this->token,
         ];
-
-        try {
-            $response = $this->client->get($url, [
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer ' . $this->token,
-                ],
-                'json' => $payload,
-            ]);
-
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
-        }
     }
 }
