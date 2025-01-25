@@ -52,4 +52,11 @@ return [
         'industry_type' => env('PAYTM_INDUSTRY_TYPE'),
     ],
 
+    'shipping_api' => [
+        'base_url' => env('SHIPPING_API_BASE_URL'),
+        'public_key' => env('SHIPPING_API_PUBLIC_KEY'),
+        'private_key' => env('SHIPPING_API_PRIVATE_KEY'),
+    ],
+
+
 ];

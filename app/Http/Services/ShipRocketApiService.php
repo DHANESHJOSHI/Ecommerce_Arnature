@@ -14,24 +14,36 @@ final class ShippingApiService
     private ?string $token = null;
     private Client $client;
 
+    // public function __construct()
+    // {
+    //     // Initialize the Guzzle client
+    //     $this->client = new Client([
+    //         'base_uri' => 'https://shipping-api.com/app/api/v1/',
+    //         'headers' => [
+    //             'Content-Type' => 'application/json',
+    //         ],
+    //     ]);        
+    // }
+
     public function __construct()
     {
-        // Initialize the Guzzle client
+        $this->apiBaseUrl = config('services.shipping_api.base_url');
         $this->client = new Client([
-            'base_uri' => 'https://shipping-api.com/app/api/v1/',
+            'base_uri' => $this->apiBaseUrl,
             'headers' => [
                 'Content-Type' => 'application/json',
             ],
-        ]);        
+        ]);
     }
+
 
     private function login(): void
     {
         try {
             $response = $this->client->post('/login', [
-                'headers' => [
-                    'public-key' => "vpnusfluid@gmail.com",
-                    'private-key' =>"VPNUSFLUId@123",
+              'headers' => [
+                    'public-key' => config('services.shipping_api.public_key'),
+                    'private-key' => config('services.shipping_api.private_key'),
                 ],
             ]);
 
